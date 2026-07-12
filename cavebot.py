@@ -27,14 +27,34 @@ import config
 import vision
 
 
+def load_waypoints(path: str) -> list[list[int]]:
+    """Le a rota do disco; devolve [] se o arquivo nao existir."""
+    if path and os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+
+def save_waypoints(path: str, waypoints: list[list[int]]) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(waypoints, f)
+
+
 class CaveBot:
-    def __init__(self):
+    def __init__(self, waypoints_file: str | None = None, wait: float | None = None):
+        self.waypoints_file = waypoints_file or config.WAYPOINTS_FILE
+        self.wait = wait if wait is not None else config.WAYPOINT_WAIT
         self.waypoints: list[list[int]] = []
         self.index = 0
         self._walking_since = 0.0
-        if os.path.exists(config.WAYPOINTS_FILE):
-            with open(config.WAYPOINTS_FILE, encoding="utf-8") as f:
-                self.waypoints = json.load(f)
+        self.reload()
+
+    def reload(self) -> None:
+        """Recarrega a rota do arquivo atual (chamado pela GUI ao editar
+        waypoints ou trocar de arquivo)."""
+        self.waypoints = load_waypoints(self.waypoints_file)
+        self.index = 0
+        self._walking_since = 0.0
 
     def tick(self, frame, send_click) -> None:
         if not self.waypoints:
@@ -44,7 +64,7 @@ class CaveBot:
             self._walking_since = 0.0
             return
         now = time.time()
-        if self._walking_since and now - self._walking_since < config.WAYPOINT_WAIT:
+        if self._walking_since and now - self._walking_since < self.wait:
             return  # ainda andando pro waypoint atual
 
         x, y = self.waypoints[self.index]
@@ -54,19 +74,32 @@ class CaveBot:
         self.index = (self.index + 1) % len(self.waypoints)
 
 
-def record() -> None:
+def record(path: str | None = None) -> None:
     """Gravador de rota: clique nos pontos do minimapa na ordem da rota."""
     import cv2
 
     from capture import capture
-    from window import find_capture_window
+    from window import find_window
 
-    hwnd = find_capture_window()
+    path = path or config.WAYPOINTS_FILE
+
+    # janela de captura e minimapa vem das settings (o que o usuario
+    # escolheu/calibrou na GUI) — nada de titulo/regiao hardcoded.
+    capture_title = config.CAPTURE_WINDOW_TITLE
+    mm = config.MINIMAP
+    try:
+        from presets import PresetStore
+        settings = PresetStore().get_settings()
+        capture_title = settings.get("capture_window_title", capture_title)
+        mm = settings.get("calibration", {}).get("minimap", mm)
+    except Exception:
+        pass
+
+    hwnd = find_window(capture_title)
     if not hwnd:
-        print("Projetor do OBS nao encontrado.")
+        print(f"Janela de captura '{capture_title}' nao encontrada.")
         return
 
-    mm = config.MINIMAP
     waypoints: list[list[int]] = []
 
     def on_mouse(event, x, y, flags, param):
@@ -88,14 +121,13 @@ def record() -> None:
             break
     cv2.destroyAllWindows()
 
-    with open(config.WAYPOINTS_FILE, "w", encoding="utf-8") as f:
-        json.dump(waypoints, f)
-    print(f"{len(waypoints)} waypoints salvos em {config.WAYPOINTS_FILE}")
+    save_waypoints(path, waypoints)
+    print(f"{len(waypoints)} waypoints salvos em {path}")
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "record":
-        record()
+        record(sys.argv[2] if len(sys.argv) > 2 else None)
     else:
         from capture import capture
         from inputs import click

@@ -1,0 +1,129 @@
+{
+  "active_preset": "Zegani",
+  "presets": {
+    "Default": {
+      "combat": {
+        "combo": []
+      },
+      "healing": {
+        "spell_heal": [
+          {
+            "name": "cura",
+            "key": "F1",
+            "hp_below_pct": 80,
+            "cooldown": 1.0
+          }
+        ],
+        "potion_heal": [
+          {
+            "name": "potion",
+            "key": "F2",
+            "hp_below_pct": 45,
+            "cooldown": 1.0
+          }
+        ],
+        "mana_potion": {
+          "key": "F3",
+          "mana_below_pct": 40,
+          "cooldown": 1.0
+        }
+      }
+    },
+    "Zegani": {
+      "combat": {
+        "combo": [
+          {
+            "name": "Exori ico",
+            "key": "F4",
+            "min_monsters": 1,
+            "mana_pct": 1,
+            "cooldown": 2.0
+          }
+        ]
+      },
+      "healing": {
+        "spell_heal": [
+          {
+            "name": "Exura ico",
+            "key": "F1",
+            "hp_below_pct": 90,
+            "cooldown": 2.0
+          }
+        ],
+        "potion_heal": [
+          {
+            "name": "Health potion",
+            "key": "F2",
+            "hp_below_pct": 50,
+            "cooldown": 1.0
+          },
+          {
+            "name": "Mana potion",
+            "key": "F3",
+            "hp_below_pct": 75,
+            "cooldown": 1.0
+          }
+        ],
+        "mana_potion": {
+          "key": "F3",
+          "mana_below_pct": 40,
+          "cooldown": 1.0
+        }
+      }
+    }
+  },
+  "settings": {
+    "client_window_title": "Tibia - Zegani",
+    "capture_window_title": "Projetor - Fonte: Tibia",
+    "opacity": 255,
+    "calibration": {
+      "hp_bar": {
+        "x_start": 1729,
+        "x_end": 1841,
+        "y": 355,
+        "color_bgr": [
+          91,
+          91,
+          197
+        ],
+        "tolerance": 30
+      },
+      "mana_bar": {
+        "x_start": 1731,
+        "x_end": 1842,
+        "y": 370,
+        "color_bgr": [
+          177,
+          63,
+          65
+        ],
+        "tolerance": 30
+      },
+      "battle_list": {
+        "x": 1494,
+        "y": 22,
+        "w": 181,
+        "h": 211,
+        "entry_height": 22
+      },
+      "game_area": {
+        "player_x": 732,
+        "player_y": 368,
+        "sqm_size": 57
+      },
+      "minimap": {
+        "x": 1713,
+        "y": 11,
+        "w": 128,
+        "h": 128
+      }
+    },
+    "hotkey_panic": "F12",
+    "hotkey_toggle_attack": "F9",
+    "hotkey_toggle_spell": "F10",
+    "hotkey_toggle_cavebot": "F8",
+    "waypoints_file": "waypoints.json",
+    "waypoint_wait": 4.0,
+    "record_key": "F11"
+  }
+}

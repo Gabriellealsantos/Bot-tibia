@@ -13,6 +13,7 @@ Por que PostMessage e nao pyautogui/pynput?
 Limitacao: clientes que leem teclado por DirectInput/RawInput ignoram
 PostMessage. OTClient e derivados normalmente aceitam. Teste com o seu!
 """
+import string
 import time
 
 import win32api
@@ -29,6 +30,10 @@ VK = {
     "UP": win32con.VK_UP, "DOWN": win32con.VK_DOWN,
     "LEFT": win32con.VK_LEFT, "RIGHT": win32con.VK_RIGHT,
 }
+# A-Z e 0-9: o Win32 nao define VK_A..VK_Z/VK_0..VK_9 em win32con — o
+# codigo delas E o proprio ord() da letra/digito (spec da Win32 API).
+VK.update({c: ord(c) for c in string.ascii_uppercase})
+VK.update({c: ord(c) for c in string.digits})
 
 
 def _lparam(vk: int, keyup: bool = False) -> int:

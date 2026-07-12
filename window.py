@@ -18,6 +18,28 @@ WS_EX_LAYERED = 0x00080000
 LWA_ALPHA = 0x00000002
 
 
+def enable_dpi_awareness() -> None:
+    """Torna o processo ciente de DPI ANTES de qualquer captura.
+
+    Sem isso, num monitor com zoom (ex.: notebook a 125%) o Windows MENTE
+    o tamanho das janelas (reporta 1536 quando o real e 1920) e o
+    PrintWindow captura so um pedaco — barras/battle list ficam fora do
+    frame. Com DPI awareness, os tamanhos sao os pixels REAIS e a captura
+    funciona igual em qualquer PC/tela. Chamar 1x, logo no inicio.
+    """
+    try:
+        # PER_MONITOR_AWARE_V2 (-4) — precisa de c_void_p, senao nao aplica.
+        ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+    except Exception:
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PER_MONITOR
+        except Exception:
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()  # system-aware (fallback antigo)
+            except Exception:
+                pass
+
+
 def find_window(title: str = WINDOW_TITLE) -> int:
     """Retorna o HWND (handle) da janela do cliente, ou 0 se nao achou.
 
@@ -31,6 +53,22 @@ def find_window(title: str = WINDOW_TITLE) -> int:
     matches: list[int] = []
     win32gui.EnumWindows(_enum, matches)
     return matches[0] if matches else 0
+
+
+def list_windows() -> list[str]:
+    """Titulos de todas as janelas visiveis (com titulo), para o usuario
+    escolher na GUI qual e o cliente e qual e o projetor do OBS — em vez
+    de deixar os titulos hardcoded no config."""
+    def _enum(hwnd, acc):
+        if win32gui.IsWindowVisible(hwnd):
+            title = win32gui.GetWindowText(hwnd)
+            if title.strip():
+                acc.append(title)
+
+    titles: list[str] = []
+    win32gui.EnumWindows(_enum, titles)
+    # sem duplicatas, preservando ordem
+    return list(dict.fromkeys(titles))
 
 
 def find_capture_window() -> int:

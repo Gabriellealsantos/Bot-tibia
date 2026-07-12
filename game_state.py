@@ -29,6 +29,7 @@ from combat import Combat
 from loot import Loot
 from cavebot import CaveBot
 from inputs import click, press_key
+from presets import PresetStore
 from window import find_window
 
 # prioridades da fila de inputs (menor = mais urgente)
@@ -94,21 +95,45 @@ class BotRunner:
         self.hwnd = 0          # cliente Tibia: recebe os inputs
         self.capture_hwnd = 0  # projetor do OBS: fonte dos frames
         self.running = threading.Event()
-        self.enabled = {"heal": True, "combat": True, "loot": True, "cavebot": True}
+        # "combat" virou dois toggles independentes: attack (targeting) e
+        # spell (combo de magias) — dá pra ligar so um dos dois.
+        self.enabled = {"heal": True, "attack": True, "spell": True,
+                        "loot": True, "cavebot": True}
         self.status = {"hp": 0.0, "mana": 0.0, "monsters": 0, "attacking": False}
+        self.presets = PresetStore()  # carrega/semeia presets.json
+        self._heal: HealBot | None = None
+        self._combat: Combat | None = None
+        self._loot: Loot | None = None
+        self._cave: CaveBot | None = None
         self._threads: list[threading.Thread] = []
 
     # ------------------------------------------------------------ start/stop
     def start(self) -> bool:
-        self.hwnd = find_window(config.WINDOW_TITLE)
-        self.capture_hwnd = find_window(config.CAPTURE_WINDOW_TITLE)
-        if not self.hwnd or not self.capture_hwnd:
+        settings = self.presets.get_settings()
+        self.hwnd = find_window(settings["client_window_title"])
+        self.capture_hwnd = find_window(settings["capture_window_title"])
+        if not self.hwnd:
+            print(f"[start] janela do CLIENTE '{settings['client_window_title']}' "
+                  "nao encontrada — escolha a janela certa na aba Geral.")
+            return False
+        if not self.capture_hwnd:
+            print(f"[start] janela de CAPTURA '{settings['capture_window_title']}' "
+                  "nao encontrada — escolha a janela certa na aba Geral.")
             return False
         self.running.set()
         self._shared = SharedFrame()
         self._sender = InputSender(self.hwnd)
-        self._heal, self._combat = HealBot(), Combat()
-        self._loot, self._cave = Loot(), CaveBot()
+        # aplica a calibracao do usuario (regioes de pixel) antes de ler frames
+        import vision
+        calibration = settings.get("calibration", {})
+        vision.set_calibration(calibration)
+        preset = self.presets.get()
+        self._heal = HealBot(preset["healing"]["spell_heal"],
+                              preset["healing"]["potion_heal"],
+                              preset["healing"]["mana_potion"])
+        self._combat = Combat(preset["combat"]["combo"])
+        self._loot = Loot(calibration.get("game_area"))
+        self._cave = CaveBot(settings["waypoints_file"], settings["waypoint_wait"])
 
         targets = [
             self._capture_loop,
@@ -116,7 +141,7 @@ class BotRunner:
             self._heal_loop,
             self._combat_loop,
             self._nav_loop,
-            self._panic_key_loop,
+            self._hotkey_loop,
         ]
         self._threads = [threading.Thread(target=t, daemon=True) for t in targets]
         for t in self._threads:
@@ -125,6 +150,54 @@ class BotRunner:
 
     def stop(self):
         self.running.clear()
+
+    def apply_preset(self, name: str | None = None) -> None:
+        """Chamado pela GUI (thread principal do Tk) apos editar ou trocar
+        o preset ativo. Troca os objetos de combo/cura por inteiro nas
+        instancias vivas de Combat/HealBot — mesma logica de atomicidade
+        do SharedFrame, sem precisar de lock. No-op seguro se o bot ainda
+        nao foi iniciado."""
+        if name:
+            self.presets.set_active(name)
+        preset = self.presets.get()
+        if self._combat is not None:
+            self._combat.set_combo(preset["combat"]["combo"])
+        if self._heal is not None:
+            self._heal.set_tiers(preset["healing"]["spell_heal"],
+                                  preset["healing"]["potion_heal"],
+                                  preset["healing"]["mana_potion"])
+
+    def apply_settings(self) -> None:
+        """Empurra as settings globais (arquivo de rota, espera) para o
+        cavebot vivo. As hotkeys sao lidas ao vivo pelo _hotkey_loop, entao
+        nao precisam ser empurradas aqui. No-op seguro se o bot esta parado."""
+        settings = self.presets.get_settings()
+        if self._cave is not None:
+            self._cave.wait = settings["waypoint_wait"]
+            if self._cave.waypoints_file != settings["waypoints_file"]:
+                self._cave.waypoints_file = settings["waypoints_file"]
+                self._cave.reload()
+
+    def reload_cavebot(self) -> None:
+        """Recarrega a rota do disco na instancia viva (GUI editou/gravou)."""
+        if self._cave is not None:
+            self._cave.reload()
+
+    def apply_calibration(self) -> None:
+        """Empurra a calibracao das regioes de pixel (barras, battle list,
+        game area) para a percepcao viva — a GUI chama isso apos calibrar,
+        sem precisar reiniciar o bot."""
+        import vision
+        cal = self.presets.get_settings().get("calibration", {})
+        vision.set_calibration(cal)
+        if self._loot is not None and cal.get("game_area"):
+            self._loot.game_area = cal["game_area"]
+
+    def cave_progress(self) -> tuple[int, int]:
+        """(waypoint atual, total) para a GUI mostrar o progresso ao vivo."""
+        if self._cave is None:
+            return (0, 0)
+        return (self._cave.index, len(self._cave.waypoints))
 
     # ---------------------------------------------------------------- loops
     def _capture_loop(self):
@@ -160,8 +233,18 @@ class BotRunner:
             lambda f: self._heal.tick(f, lambda k: self._sender.key(PRIO_HEAL, k)))
 
     def _combat_loop(self):
-        self._module_loop("combat", 0.15,
-            lambda f: self._combat.tick(f, lambda k: self._sender.key(PRIO_COMBAT, k)))
+        # attack e spell tem toggles separados; a thread roda se qualquer um
+        # estiver ligado e o Combat.tick recebe os dois flags.
+        while self.running.is_set():
+            frame = self._shared.get()
+            if frame is not None and (self.enabled["attack"] or self.enabled["spell"]):
+                self._combat.tick(
+                    frame,
+                    lambda k: self._sender.key(PRIO_COMBAT, k),
+                    do_attack=self.enabled["attack"],
+                    do_spell=self.enabled["spell"],
+                )
+            time.sleep(0.15)
 
     def _nav_loop(self):
         def tick(frame):
@@ -178,13 +261,36 @@ class BotRunner:
                 tick(frame)
             time.sleep(0.2)
 
-    def _panic_key_loop(self):
-        """Tecla de emergencia global (config.PAUSE_KEY) para o bot inteiro."""
+    def _hotkey_loop(self):
+        """Hotkeys globais lidas com o JOGO em foco (GetAsyncKeyState):
+        panico para tudo; as outras alternam attack/spell/cavebot. Deteccao
+        por borda de subida (so alterna 1x por toque, nao a cada frame).
+        As teclas vem das settings, entao mudar na GUI vale na hora."""
         from inputs import VK
-        vk = VK.get(config.PAUSE_KEY.upper(), 0)
+        prev: dict[str, bool] = {}
+        toggles = {
+            "hotkey_toggle_attack": "attack",
+            "hotkey_toggle_spell": "spell",
+            "hotkey_toggle_cavebot": "cavebot",
+        }
         while self.running.is_set():
+            settings = self.presets.get_settings()
+
+            panic_key = settings.get("hotkey_panic", config.PAUSE_KEY)
+            vk = VK.get(panic_key.upper(), 0)
             if vk and win32api.GetAsyncKeyState(vk) & 0x8000:
-                print(f"[panic] {config.PAUSE_KEY} pressionado -> parando o bot")
+                print(f"[panic] {panic_key} pressionado -> parando o bot")
                 self.stop()
                 break
-            time.sleep(0.05)
+
+            for setting_key, flag in toggles.items():
+                keyname = settings.get(setting_key, "")
+                vk = VK.get(keyname.upper(), 0)
+                down = bool(vk and win32api.GetAsyncKeyState(vk) & 0x8000)
+                if down and not prev.get(flag, False):
+                    self.enabled[flag] = not self.enabled[flag]
+                    estado = "ligado" if self.enabled[flag] else "desligado"
+                    print(f"[hotkey] {keyname} -> {flag} {estado}")
+                prev[flag] = down
+
+            time.sleep(0.03)

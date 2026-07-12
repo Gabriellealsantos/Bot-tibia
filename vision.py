@@ -15,10 +15,36 @@ import numpy as np
 
 import config
 
+# Calibracao ATIVA das regioes de pixel. Comeca com os valores do config
+# (compatibilidade), mas o BotRunner sobrescreve com o que o usuario
+# calibrou na GUI (settings["calibration"]) — e por isso que o mesmo bot
+# funciona em qualquer resolucao/tela sem editar codigo.
+_CAL = {
+    "hp_bar": config.HP_BAR,
+    "mana_bar": config.MANA_BAR,
+    "battle_list": config.BATTLE_LIST,
+}
+
+
+def set_calibration(cal: dict) -> None:
+    """Troca a calibracao ativa. `cal` vem de settings["calibration"];
+    chaves ausentes mantem o valor atual."""
+    for key in ("hp_bar", "mana_bar", "battle_list"):
+        if key in cal and cal[key]:
+            _CAL[key] = cal[key]
+
 
 def _bar_percent(frame: np.ndarray, bar: dict) -> float:
-    """Percentual de uma barra horizontal (HP ou mana), 0.0 a 100.0."""
-    row = frame[bar["y"], bar["x_start"]:bar["x_end"]].astype(np.int16)
+    """Percentual de uma barra horizontal (HP ou mana), 0.0 a 100.0.
+
+    Robusto a calibracao fora do frame: se a linha/coluna cair fora dos
+    limites, devolve 0 em vez de estourar — melhor um 0 na GUI (avisando
+    que precisa calibrar) do que uma thread quebrando."""
+    h, w = frame.shape[:2]
+    y, x0, x1 = bar["y"], bar["x_start"], bar["x_end"]
+    if not (0 <= y < h) or x0 < 0 or x0 >= w or x1 <= x0:
+        return 0.0
+    row = frame[y, x0:min(x1, w)].astype(np.int16)
     color = np.array(bar["color_bgr"], dtype=np.int16)
     # pixel "cheio" = todos os 3 canais perto da cor calibrada
     filled = np.all(np.abs(row - color) <= bar["tolerance"], axis=1)
@@ -27,11 +53,11 @@ def _bar_percent(frame: np.ndarray, bar: dict) -> float:
 
 
 def hp_percent(frame: np.ndarray) -> float:
-    return _bar_percent(frame, config.HP_BAR)
+    return _bar_percent(frame, _CAL["hp_bar"])
 
 
 def mana_percent(frame: np.ndarray) -> float:
-    return _bar_percent(frame, config.MANA_BAR)
+    return _bar_percent(frame, _CAL["mana_bar"])
 
 
 # Cores possiveis da barrinha de vida das criaturas na battle list
@@ -52,7 +78,7 @@ def monster_count(frame: np.ndarray) -> int:
     horizontais com muitos pixels de "cor de barrinha de vida". Cada
     grupo de linhas contiguas = 1 criatura.
     """
-    bl = config.BATTLE_LIST
+    bl = _CAL["battle_list"]
     region = frame[bl["y"]:bl["y"] + bl["h"], bl["x"]:bl["x"] + bl["w"]].astype(np.int16)
     if region.size == 0:
         return 0
@@ -77,7 +103,7 @@ def is_attacking(frame: np.ndarray) -> bool:
     entrada. Procuramos pixels desse vermelho na coluna esquerda da
     battle list (onde fica a borda da moldura).
     """
-    bl = config.BATTLE_LIST
+    bl = _CAL["battle_list"]
     col = frame[bl["y"]:bl["y"] + bl["h"], bl["x"]:bl["x"] + 4].astype(np.int16)
     red = np.array((0, 0, 255), dtype=np.int16)
     hits = np.all(np.abs(col - red) <= 60, axis=2)

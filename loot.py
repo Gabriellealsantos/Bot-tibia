@@ -21,8 +21,9 @@ import vision
 
 
 class Loot:
-    def __init__(self):
+    def __init__(self, game_area: dict | None = None):
         self._was_attacking = False
+        self.game_area = game_area or config.GAME_AREA
 
     def tick(self, frame, send_click) -> None:
         """`send_click(x, y, right)` clica na coordenada da janela."""
@@ -34,7 +35,7 @@ class Loot:
             return
 
         print("[loot] alvo morreu -> abrindo corpos ao redor")
-        ga = config.GAME_AREA
+        ga = self.game_area
         # 9 posicoes: o SQM do char e os 8 vizinhos
         for dy in (-1, 0, 1):
             for dx in (-1, 0, 1):

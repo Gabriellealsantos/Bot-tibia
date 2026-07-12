@@ -12,6 +12,12 @@ Fluxo de uso:
 
 Cada modulo tambem roda sozinho pra teste: python healbot.py, etc.
 """
+from window import enable_dpi_awareness
+
+# ANTES de qualquer captura/janela: sem isso, monitores com zoom (DPI > 100%)
+# fazem a captura sair cortada. Tem que ser a primeira coisa do processo.
+enable_dpi_awareness()
+
 from gui import main
 
 if __name__ == "__main__":

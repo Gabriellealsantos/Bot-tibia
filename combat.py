@@ -20,29 +20,41 @@ import vision
 
 
 class Combat:
-    def __init__(self):
+    def __init__(self, combo: list[dict] | None = None):
         self._last_attack = 0.0
         self._last_global = 0.0
-        self._last_cast = {spell["name"]: 0.0 for spell in config.EK_SPELLS}
+        self.set_combo(combo if combo is not None else config.EK_SPELLS)
 
-    def tick(self, frame, send) -> None:
+    def set_combo(self, combo: list[dict]) -> None:
+        """Troca a rotacao de magias por inteiro (nunca muta a lista atual
+        in-place) — quem le sempre ve uma lista consistente, nunca uma
+        mistura parcial de edicoes feitas pela GUI em outra thread."""
+        self._combo = list(combo)
+        self._last_cast = {spell["name"]: 0.0 for spell in self._combo}
+
+    def tick(self, frame, send, do_attack: bool = True, do_spell: bool = True) -> None:
+        """do_attack liga o targeting (auto-attack); do_spell liga o combo
+        de magias (auto-spell). A GUI/hotkeys alternam os dois de forma
+        independente — dá pra rodar so o attack, so o spell, ou os dois."""
         now = time.time()
         monsters = vision.monster_count(frame)
         if monsters == 0:
             return
 
         # 1) targeting: garante que sempre ha um alvo selecionado
-        if not vision.is_attacking(frame) and now - self._last_attack >= config.ATTACK_COOLDOWN:
+        if do_attack and not vision.is_attacking(frame) and now - self._last_attack >= config.ATTACK_COOLDOWN:
             send(config.ATTACK_KEY)
             self._last_attack = now
             print(f"[combat] {monsters} monstro(s) -> attack next")
             return  # espera o proximo frame confirmar o alvo
 
         # 2) rotacao de area: mais forte primeiro
+        if not do_spell:
+            return
         if now - self._last_global < config.SPELL_GLOBAL_COOLDOWN:
             return
         mana = vision.mana_percent(frame)
-        for spell in config.EK_SPELLS:
+        for spell in self._combo:
             if monsters < spell["min_monsters"]:
                 continue
             if mana < spell["mana_pct"]:

@@ -97,3 +97,11 @@ WAYPOINTS_FILE = "waypoints.json"
 WAYPOINT_WAIT = 4.0      # v1: segundos esperando chegar apos clicar no minimapa
 RECORD_KEY = "F11"       # tecla p/ gravar waypoint no modo gravacao
 PAUSE_KEY = "F12"        # liga/desliga o bot inteiro (main.py)
+
+# ---------------------------------------------------------- hotkeys globais
+# Teclas que ligam/desligam modulos com o JOGO em foco (lidas via
+# GetAsyncKeyState, igual a tecla de panico). Sao apenas os DEFAULTS —
+# a GUI salva as escolhas do usuario em presets.json (bloco "settings").
+HOTKEY_TOGGLE_ATTACK = "F9"    # liga/desliga o auto-attack (targeting)
+HOTKEY_TOGGLE_SPELL = "F10"    # liga/desliga o auto-spell (combo de magias)
+HOTKEY_TOGGLE_CAVEBOT = "F8"   # liga/desliga so o cavebot
