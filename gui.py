@@ -618,12 +618,45 @@ class BotGUI:
                    command=lambda: self._capture_key(self.root, self.cave_hotkey_var.set)).grid(row=1, column=2, padx=4)
         ttk.Button(cfg, text="Salvar config", style="Small.TButton", command=self._save_cave_config).grid(row=1, column=4, padx=4)
 
+        # config do auto-loot
+        loot = ttk.LabelFrame(frame, text=" Auto-loot ", padding=10)
+        loot.pack(fill="x", pady=(8, 0))
+        self.loot_radius_var = tk.StringVar()
+        self.loot_settle_var = tk.StringVar()
+        self.loot_delay_var = tk.StringVar()
+        ttk.Label(loot, text="Raio (1 = 3x3, 2 = 5x5):").grid(row=0, column=0, sticky="w", padx=4, pady=4)
+        ttk.Spinbox(loot, from_=1, to=3, textvariable=self.loot_radius_var, width=5).grid(row=0, column=1, padx=4)
+        ttk.Label(loot, text="Esperar char parar (s):").grid(row=0, column=2, sticky="w", padx=4)
+        ttk.Spinbox(loot, from_=0, to=2, increment=0.1, textvariable=self.loot_settle_var, width=5).grid(row=0, column=3, padx=4)
+        ttk.Label(loot, text="Delay entre cliques (s):").grid(row=0, column=4, sticky="w", padx=4)
+        ttk.Spinbox(loot, from_=0, to=1, increment=0.05, textvariable=self.loot_delay_var, width=5).grid(row=0, column=5, padx=4)
+        ttk.Button(loot, text="Salvar", style="Small.TButton", command=self._save_loot_config).grid(row=0, column=6, padx=8)
+        ttk.Label(loot, text="Dica: desligue 'Perseguir Oponente' no Tibia p/ o char ficar parado e os corpos caírem do lado.",
+                  style="Muted.TLabel").grid(row=1, column=0, columnspan=7, sticky="w", pady=(4, 0))
+
     def _refresh_cave_config_form(self):
         s = self.runner.presets.get_settings()
         self.wp_file_var.set(s.get("waypoints_file", ""))
         self.cave_wait_var.set(str(s.get("waypoint_wait", 4.0)))
         self.cave_reckey_var.set(s.get("record_key", ""))
         self.cave_hotkey_var.set(s.get("hotkey_toggle_cavebot", ""))
+        self.loot_radius_var.set(str(s.get("loot_radius", 1)))
+        self.loot_settle_var.set(str(s.get("loot_settle", 0.4)))
+        self.loot_delay_var.set(str(s.get("loot_delay", 0.25)))
+
+    def _save_loot_config(self):
+        from tkinter import messagebox
+        try:
+            radius = int(float(self.loot_radius_var.get()))
+            settle = float(self.loot_settle_var.get())
+            delay = float(self.loot_delay_var.get())
+        except ValueError:
+            messagebox.showwarning("Auto-loot", "Valores inválidos.")
+            return
+        self.runner.presets.set_setting("loot_radius", radius)
+        self.runner.presets.set_setting("loot_settle", settle)
+        self.runner.presets.set_setting("loot_delay", delay)
+        self.runner.apply_settings()
 
     def _current_route_file(self) -> str:
         return self.runner.presets.get_settings().get("waypoints_file", config.WAYPOINTS_FILE)

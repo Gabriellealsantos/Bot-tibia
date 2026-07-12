@@ -92,6 +92,9 @@ def default_settings() -> dict:
         "waypoints_file": config.WAYPOINTS_FILE,
         "waypoint_wait": config.WAYPOINT_WAIT,
         "record_key": config.RECORD_KEY,
+        "loot_radius": config.LOOT_RADIUS,
+        "loot_delay": config.LOOT_DELAY,
+        "loot_settle": config.LOOT_SETTLE,
     }
 
 

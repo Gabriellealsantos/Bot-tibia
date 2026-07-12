@@ -88,6 +88,8 @@ GAME_AREA = {
     "sqm_size": 73,
 }
 LOOT_DELAY = 0.25    # pausa entre cliques de loot
+LOOT_RADIUS = 1      # 1 = 3x3 SQMs ao redor; 2 = 5x5 (pega corpo mais longe)
+LOOT_SETTLE = 0.4    # espera o char PARAR antes de lootear (segundos)
 
 # -------------------------------------------------------------- cavebot
 MINIMAP = {

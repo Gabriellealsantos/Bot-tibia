@@ -132,7 +132,10 @@ class BotRunner:
                               preset["healing"]["potion_heal"],
                               preset["healing"]["mana_potion"])
         self._combat = Combat(preset["combat"]["combo"])
-        self._loot = Loot(calibration.get("game_area"))
+        self._loot = Loot(calibration.get("game_area"),
+                          radius=settings.get("loot_radius"),
+                          delay=settings.get("loot_delay"),
+                          settle=settings.get("loot_settle"))
         self._cave = CaveBot(settings["waypoints_file"], settings["waypoint_wait"])
 
         targets = [
@@ -177,6 +180,10 @@ class BotRunner:
             if self._cave.waypoints_file != settings["waypoints_file"]:
                 self._cave.waypoints_file = settings["waypoints_file"]
                 self._cave.reload()
+        if self._loot is not None:
+            self._loot.set_config(radius=settings.get("loot_radius"),
+                                  delay=settings.get("loot_delay"),
+                                  settle=settings.get("loot_settle"))
 
     def reload_cavebot(self) -> None:
         """Recarrega a rota do disco na instancia viva (GUI editou/gravou)."""

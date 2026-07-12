@@ -1,9 +1,31 @@
 {
-  "active_preset": "Zegani",
+  "active_preset": "Default",
   "presets": {
     "Default": {
       "combat": {
-        "combo": []
+        "combo": [
+          {
+            "name": "exori gran",
+            "key": "F5",
+            "min_monsters": 3,
+            "mana_pct": 35,
+            "cooldown": 6.0
+          },
+          {
+            "name": "exori",
+            "key": "F6",
+            "min_monsters": 2,
+            "mana_pct": 15,
+            "cooldown": 4.0
+          },
+          {
+            "name": "exori ico",
+            "key": "F7",
+            "min_monsters": 1,
+            "mana_pct": 5,
+            "cooldown": 2.0
+          }
+        ]
       },
       "healing": {
         "spell_heal": [
@@ -28,48 +50,6 @@
           "cooldown": 1.0
         }
       }
-    },
-    "Zegani": {
-      "combat": {
-        "combo": [
-          {
-            "name": "Exori ico",
-            "key": "F4",
-            "min_monsters": 1,
-            "mana_pct": 1,
-            "cooldown": 2.0
-          }
-        ]
-      },
-      "healing": {
-        "spell_heal": [
-          {
-            "name": "Exura ico",
-            "key": "F1",
-            "hp_below_pct": 90,
-            "cooldown": 2.0
-          }
-        ],
-        "potion_heal": [
-          {
-            "name": "Health potion",
-            "key": "F2",
-            "hp_below_pct": 50,
-            "cooldown": 1.0
-          },
-          {
-            "name": "Mana potion",
-            "key": "F3",
-            "hp_below_pct": 75,
-            "cooldown": 1.0
-          }
-        ],
-        "mana_potion": {
-          "key": "F3",
-          "mana_below_pct": 40,
-          "cooldown": 1.0
-        }
-      }
     }
   },
   "settings": {
@@ -78,44 +58,44 @@
     "opacity": 255,
     "calibration": {
       "hp_bar": {
-        "x_start": 1729,
-        "x_end": 1841,
-        "y": 355,
+        "x_start": 1768,
+        "x_end": 1857,
+        "y": 285,
         "color_bgr": [
-          91,
-          91,
-          197
+          79,
+          79,
+          219
         ],
         "tolerance": 30
       },
       "mana_bar": {
-        "x_start": 1731,
-        "x_end": 1842,
-        "y": 370,
+        "x_start": 1768,
+        "x_end": 1857,
+        "y": 298,
         "color_bgr": [
-          177,
-          63,
-          65
+          218,
+          80,
+          83
         ],
         "tolerance": 30
       },
       "battle_list": {
-        "x": 1494,
-        "y": 22,
-        "w": 181,
-        "h": 211,
+        "x": 1750,
+        "y": 465,
+        "w": 155,
+        "h": 170,
         "entry_height": 22
       },
       "game_area": {
-        "player_x": 732,
-        "player_y": 368,
-        "sqm_size": 57
+        "player_x": 871,
+        "player_y": 402,
+        "sqm_size": 73
       },
       "minimap": {
-        "x": 1713,
-        "y": 11,
-        "w": 128,
-        "h": 128
+        "x": 1752,
+        "y": 4,
+        "w": 106,
+        "h": 109
       }
     },
     "hotkey_panic": "F12",
@@ -124,6 +104,9 @@
     "hotkey_toggle_cavebot": "F8",
     "waypoints_file": "waypoints.json",
     "waypoint_wait": 4.0,
-    "record_key": "F11"
+    "record_key": "F11",
+    "loot_radius": 1,
+    "loot_delay": 0.25,
+    "loot_settle": 0.4
   }
 }
